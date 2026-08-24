@@ -118,3 +118,24 @@ def test_plan_accepts_a_queries_file(seeded, tmp_path, monkeypatch, capsys):
     assert cli.main(["plan", "HEB", "--queries", str(qfile), "-o", str(out), "--no-live"]) == 0
     rows = {r["t"]: r for r in json.loads(out.read_text())["tracks"]}
     assert rows["aaa"]["q"] == "school bus" and rows["aaa"]["c"]
+
+
+def test_cards_omits_counts_when_the_summary_has_no_chapters(monkeypatch, capsys):
+    # /content/mine returns summaries whose `content` holds config, not chapters.
+    monkeypatch.setattr(cli, "_token", lambda: "tok")
+    monkeypatch.setattr(api, "list_cards", lambda tok: [
+        {"cardId": "A1", "title": "Songs 1", "content": {"config": {}}},
+    ])
+    assert cli.main(["cards"]) == 0
+    out = capsys.readouterr().out
+    assert "A1  Songs 1" in out and "0 ch" not in out
+
+
+def test_cards_shows_counts_when_chapters_are_present(monkeypatch, capsys):
+    monkeypatch.setattr(cli, "_token", lambda: "tok")
+    monkeypatch.setattr(api, "list_cards", lambda tok: [
+        {"cardId": "A1", "title": "S", "content": {"chapters": [
+            {"key": "01", "tracks": [{"key": "01"}, {"key": "02"}]}]}},
+    ])
+    assert cli.main(["cards"]) == 0
+    assert "(1 ch / 2 tr)" in capsys.readouterr().out

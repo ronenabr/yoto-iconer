@@ -104,8 +104,12 @@ def cmd_cards(args) -> int:
                 "tracks": sum(len(ch.get("tracks") or []) for ch in chapters),
             }
         )
+    # /content/mine returns summaries without chapters, so counts are usually
+    # unknown here - say nothing rather than print a misleading zero.
     text = "\n".join(
-        f"{r['cardId']}  {r['title']}  ({r['chapters']} ch / {r['tracks']} tr)" for r in rows
+        f"{r['cardId']}  {r['title']}"
+        + (f"  ({r['chapters']} ch / {r['tracks']} tr)" if r["chapters"] else "")
+        for r in rows
     )
     _out(rows, args.json, text or "No MYO cards found.")
     return 0
