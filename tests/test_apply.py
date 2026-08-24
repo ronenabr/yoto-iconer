@@ -144,3 +144,24 @@ def test_run_survives_one_bad_icon(seeded, card, monkeypatch):
 def test_run_needs_a_card_id(seeded, card):
     with pytest.raises(apply.ApplyError):
         apply.run(seeded, "tok", {"assignments": []}, None, card=card)
+
+
+def test_upload_icon_posts_raw_bytes_not_multipart(monkeypatch):
+    seen = {}
+
+    def fake_request(method, path, token, **kw):
+        seen.update(method=method, path=path, **kw)
+        return {"displayIcon": {"mediaId": "M"}}
+
+    monkeypatch.setattr(api, "_request", fake_request)
+    assert api.upload_icon("tok", b"\x89PNG\r\n\x1a\n", "icon.png") == "M"
+    # The API rejects a multipart body with "A binary image file is required".
+    assert seen["raw_body"] == b"\x89PNG\r\n\x1a\n"
+    assert seen["content_type"] == "image/png"
+    assert seen["query"]["autoConvert"] == "true"
+
+
+def test_upload_icon_needs_a_media_id_back(monkeypatch):
+    monkeypatch.setattr(api, "_request", lambda *a, **k: {"displayIcon": {}})
+    with pytest.raises(api.ApiError):
+        api.upload_icon("tok", b"x", "icon.png")

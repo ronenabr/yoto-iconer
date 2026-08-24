@@ -124,3 +124,32 @@ def test_blank_supplied_query_still_flags_the_slot(seeded):
 def test_render_text_calls_out_slots_needing_a_query(seeded):
     built = plan.build(seeded, _hebrew_card(), limit=4, live=False)
     assert "needs an English query" in plan.render_text(built)
+
+
+def test_entry_drops_tags_that_only_restate_the_name():
+    assert plan._entry({"source": "community", "title": "Bus", "tags": "bus"}) == "com|Bus"
+
+
+def test_entry_is_capped():
+    entry = plan._entry(
+        {"source": "community", "title": "x" * 60, "tags": "y " * 40}
+    )
+    assert len(entry) <= plan.MAX_ENTRY
+
+
+def test_for_llm_drops_the_keys_map(seeded, card):
+    built = plan.build(seeded, card, limit=4, live=False)
+    view = plan.for_llm(built)
+    assert "keys" not in view and "icons" in view and "tracks" in view
+
+
+def test_plan_file_keeps_the_keys_map(seeded, card, tmp_path, monkeypatch):
+    from yoto_iconer import api, catalog, cli
+    import json
+
+    monkeypatch.setattr(catalog, "connect", lambda path=None: seeded)
+    monkeypatch.setattr(cli, "_token", lambda: "tok")
+    monkeypatch.setattr(api, "get_card", lambda tok, cid: card)
+    out = tmp_path / "p.json"
+    cli.main(["plan", "CARD1", "-o", str(out), "--no-live"])
+    assert "keys" in json.loads(out.read_text())

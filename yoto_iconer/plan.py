@@ -9,6 +9,24 @@ from . import catalog, search, yotoicons
 
 SOURCE_ABBR = {"official": "off", "community": "com", "user": "usr"}
 WEAK_SCORE = 6.0  # below this the local catalog probably has nothing good
+MAX_ENTRY = 72    # community icons carry very long tag strings; cap what the LLM reads
+
+
+def _entry(cand: dict) -> str:
+    """One icon as `source|name|tags`, trimmed so long tag lists stay cheap."""
+    src = SOURCE_ABBR.get(cand["source"], cand["source"])
+    title = cand["title"]
+    tags = cand["tags"]
+    # Tags that merely restate the name earn nothing.
+    if tags and tags.lower() == title.lower():
+        tags = ""
+    entry = "|".join([src, title, tags]).rstrip("|")
+    return entry if len(entry) <= MAX_ENTRY else entry[:MAX_ENTRY - 1] + "\u2026"
+
+
+def for_llm(built: dict) -> dict:
+    """The plan minus the bits only `apply` needs."""
+    return {k: v for k, v in built.items() if k not in ("keys", "generated")}
 
 
 def iter_slots(card: dict, only_missing: bool = False):
@@ -100,13 +118,7 @@ def build(
             if sid is None:
                 sid = f"i{len(pool) + 1}"
                 pool[cand["key"]] = sid
-                icons[sid] = "|".join(
-                    [
-                        SOURCE_ABBR.get(cand["source"], cand["source"]),
-                        cand["title"],
-                        cand["tags"],
-                    ]
-                ).rstrip("|")
+                icons[sid] = _entry(cand)
             short_ids.append(sid)
 
         row = {"t": slot, "title": title, "q": query, "c": short_ids}

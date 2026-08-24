@@ -183,16 +183,24 @@ def cmd_plan(args) -> int:
         only_missing=args.only_missing,
         live=not args.no_live,
     )
-    payload = json.dumps(built, indent=1)
     if args.output:
         with open(args.output, "w") as fh:
-            fh.write(payload + "\n")
+            fh.write(json.dumps(built, indent=1, ensure_ascii=False) + "\n")
         print(f"Wrote {args.output}  ({len(built['tracks'])} slots, {len(built['icons'])} icons)")
-        if args.text:
-            print()
-            print(plan_mod.render_text(built))
+        # Also emit the reading view, so the caller never has to open the file:
+        # it drops the `keys` map that only `apply` consumes.
+        print()
+        print(
+            plan_mod.render_text(built)
+            if args.text
+            else json.dumps(plan_mod.for_llm(built), indent=1, ensure_ascii=False)
+        )
         return 0
-    print(plan_mod.render_text(built) if args.text else payload)
+    print(
+        plan_mod.render_text(built)
+        if args.text
+        else json.dumps(plan_mod.for_llm(built), indent=1, ensure_ascii=False)
+    )
     return 0
 
 

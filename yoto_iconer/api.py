@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import json
 import mimetypes
-import secrets
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -102,31 +101,20 @@ def list_user_icons(token: str) -> list[dict]:
     return _icons_from(_request("GET", "/media/displayIcons/user/me", token))
 
 
-def _multipart(field: str, filename: str, data: bytes) -> tuple[bytes, str]:
-    boundary = "----yotoiconer" + secrets.token_hex(16)
-    mime = mimetypes.guess_type(filename)[0] or "application/octet-stream"
-    body = b"".join(
-        [
-            f"--{boundary}\r\n".encode(),
-            f'Content-Disposition: form-data; name="{field}"; filename="{filename}"\r\n'.encode(),
-            f"Content-Type: {mime}\r\n\r\n".encode(),
-            data,
-            f"\r\n--{boundary}--\r\n".encode(),
-        ]
-    )
-    return body, f"multipart/form-data; boundary={boundary}"
-
-
 def upload_icon(token: str, data: bytes, filename: str, auto_convert: bool = True) -> str:
-    """Upload a PNG/GIF as a custom display icon; returns its mediaId."""
-    body, content_type = _multipart("file", filename, data)
+    """Upload a PNG/GIF as a custom display icon; returns its mediaId.
+
+    The endpoint wants the raw image bytes as the request body. A multipart
+    form-data body is rejected with "A binary image file is required", despite
+    what the first snippet in the docs suggests.
+    """
     payload = _request(
         "POST",
         "/media/displayIcons/user/me/upload",
         token,
         query={"autoConvert": "true" if auto_convert else "false", "filename": filename},
-        raw_body=body,
-        content_type=content_type,
+        raw_body=data,
+        content_type=mimetypes.guess_type(filename)[0] or "image/png",
     )
     icon = payload.get("displayIcon", payload)
     media_id = icon.get("mediaId") or icon.get("id")
