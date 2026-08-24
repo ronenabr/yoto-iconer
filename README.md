@@ -8,15 +8,14 @@ song is a judgement call; everything around it — OAuth, searching ~5,500 icons
 uploading images, rewriting the card — is mechanical. This tool does all the
 mechanical work and leaves you (or an LLM) with just the choosing.
 
-> **Status: late-night vibecoding.** Every commit in this repo is timestamped
-> between 00:11 and 00:46 on a Tuesday, and Claude did the typing. `git log` will
-> back me up.
+> **Status: late-night vibecoding.** Built in one night, with Claude doing the
+> typing.
 >
 > It is not vapour, though: 105 tests, and every command was run against a real
 > Yoto account — which is how the three [API quirks](#known-api-quirks) below were
-> found, all of which contradict the official docs. But it has had one author, one
-> sitting and two playlists. Expect rough edges, and read the `--dry-run` output
-> before you trust it with a card you care about.
+> found, all of which contradict the official docs. But it has had one author and
+> two playlists. Expect rough edges, and read the `--dry-run` output before you
+> trust it with a card you care about.
 
 Works two ways:
 
