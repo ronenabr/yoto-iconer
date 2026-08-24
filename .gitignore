@@ -3,5 +3,9 @@ __pycache__/
 .venv/
 .pytest_cache/
 *.sqlite
+
+# Working files: these carry your card ids, track titles and icon choices.
 plan.json
 decisions.json
+titles.json
+queries.json

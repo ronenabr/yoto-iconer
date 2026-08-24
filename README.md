@@ -157,10 +157,10 @@ Perfectly usable by hand. Search, choose, apply.
 ```bash
 # 1. Find the card
 uv run yoto-iconer cards
-#   6o6Xz  Songs 1
+#   AbC12  Songs 1
 
 # 2. See what is on it now
-uv run yoto-iconer show 6o6Xz
+uv run yoto-iconer show AbC12
 #   01   Wheels on the Bus     -
 #   02   Dinosaur Stomp        -
 
@@ -179,7 +179,7 @@ catalog looks thin. `--source official` restricts to icons that need no upload.
 ```bash
 # 4. Write your choices by hand
 cat > decisions.json <<'JSON'
-{"cardId": "6o6Xz", "assignments": [
+{"cardId": "AbC12", "assignments": [
   {"t": "01", "icon": "yoto:#SG9tZS...",   "why": "school bus"},
   {"t": "02", "icon": "yotoicons:10107",   "why": "dinosaur"}
 ]}
@@ -283,7 +283,7 @@ when a title is a metaphor.
 
 ```json
 {
-  "cardId": "6o6Xz",
+  "cardId": "AbC12",
   "assignments": [
     { "t": "01",    "icon": "i7",             "why": "school bus - Wheels on the Bus" },
     { "t": "02.03", "icon": "yotoicons:1346", "why": "dinosaur" },
@@ -331,7 +331,7 @@ from yoto_iconer import api, auth
 card = json.load(open(sys.argv[1]))
 api.update_card(auth.access_token(), card)
 print('restored', card['cardId'])
-" ~/.config/yoto-iconer/backups/6o6Xz-20260825-003110.json
+" ~/.config/yoto-iconer/backups/AbC12-20260101-120000.json
 ```
 
 ---
