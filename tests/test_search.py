@@ -96,3 +96,28 @@ def test_plural_icon_name_still_ranks_for_a_singular_query(conn):
 def test_more_specific_title_beats_a_generic_one(seeded):
     # "Twinkle star" matches two words of the query; a bare "Stars" matches one.
     assert search.search(seeded, "Twinkle Twinkle Little Star", limit=3)[0]["key"] == "community:99"
+
+
+def test_file_extension_is_not_a_search_term():
+    assert search.tokenize("clock.mp3") == ["clock"]
+    assert "mp3" not in search.tokenize("Row Row Row Your Boat.mp3")
+
+
+def test_extension_stripping_leaves_nothing_for_a_hebrew_title():
+    assert search.tokenize("אדון שוקו.mp3") == []
+
+
+def test_is_latin_detects_english():
+    assert search.is_latin("The Wheels on the Bus") is True
+
+
+def test_is_latin_rejects_hebrew():
+    assert search.is_latin("אדון שוקו.mp3") is False
+
+
+def test_is_latin_rejects_a_mostly_hebrew_title_with_a_latin_artist():
+    assert search.is_latin("אוהב את המשפחה שלי - בתאל צברי Batel Tzabari") is False
+
+
+def test_is_latin_tolerates_accents():
+    assert search.is_latin("Frère Jacques") is True

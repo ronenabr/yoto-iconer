@@ -66,3 +66,55 @@ def test_apply_command_dry_run_reports_changes(seeded, card, tmp_path, monkeypat
 def test_errors_exit_with_code_two(capsys):
     assert cli.main(["cards"]) == 2
     assert "error:" in capsys.readouterr().err
+
+
+def _hebrew_card():
+    return {
+        "cardId": "HEB", "title": "Songs",
+        "content": {"chapters": [
+            {"key": "aaa", "title": "אדון שוקו.mp3", "display": {"icon16x16": None},
+             "tracks": [{"key": "01", "title": "אדון שוקו.mp3", "trackUrl": "yoto:#x",
+                         "duration": 60, "format": "mp3", "type": "audio",
+                         "overlayLabel": "1"}]},
+            {"key": "bbb", "title": "clock.mp3", "display": {"icon16x16": None},
+             "tracks": [{"key": "01", "title": "clock.mp3", "trackUrl": "yoto:#y",
+                         "duration": 60, "format": "mp3", "type": "audio",
+                         "overlayLabel": "2"}]},
+        ]},
+    }
+
+
+def test_titles_command_emits_slot_to_title(monkeypatch, capsys):
+    monkeypatch.setattr(cli, "_token", lambda: "tok")
+    monkeypatch.setattr(api, "get_card", lambda tok, cid: _hebrew_card())
+    assert cli.main(["titles", "HEB"]) == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["titles"] == {"aaa": "אדון שוקו.mp3", "bbb": "clock.mp3"}
+
+
+def test_titles_needs_query_filters_to_non_latin(monkeypatch, capsys):
+    monkeypatch.setattr(cli, "_token", lambda: "tok")
+    monkeypatch.setattr(api, "get_card", lambda tok, cid: _hebrew_card())
+    assert cli.main(["titles", "HEB", "--needs-query"]) == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert list(payload["titles"]) == ["aaa"]
+
+
+def test_titles_output_is_readable_unicode(tmp_path, monkeypatch):
+    monkeypatch.setattr(cli, "_token", lambda: "tok")
+    monkeypatch.setattr(api, "get_card", lambda tok, cid: _hebrew_card())
+    out = tmp_path / "t.json"
+    assert cli.main(["titles", "HEB", "-o", str(out)]) == 0
+    assert "אדון" in out.read_text()
+
+
+def test_plan_accepts_a_queries_file(seeded, tmp_path, monkeypatch, capsys):
+    monkeypatch.setattr(catalog, "connect", lambda path=None: seeded)
+    monkeypatch.setattr(cli, "_token", lambda: "tok")
+    monkeypatch.setattr(api, "get_card", lambda tok, cid: _hebrew_card())
+    qfile = tmp_path / "q.json"
+    qfile.write_text(json.dumps({"titles": {"aaa": "school bus"}}, ensure_ascii=False))
+    out = tmp_path / "plan.json"
+    assert cli.main(["plan", "HEB", "--queries", str(qfile), "-o", str(out), "--no-live"]) == 0
+    rows = {r["t"]: r for r in json.loads(out.read_text())["tracks"]}
+    assert rows["aaa"]["q"] == "school bus" and rows["aaa"]["c"]

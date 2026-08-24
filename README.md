@@ -51,7 +51,8 @@ You need your own **public** OAuth client. It takes about two minutes:
 4. Enable these scopes:
    | Scope | Why |
    |---|---|
-   | `user:content:manage` | read and write your MYO playlists |
+   | `user:content:manage` | write your MYO playlists |
+   | `user:content:view` | read them (`manage` does not imply it at the API) |
    | `user:icons:manage` | upload community icons into your library |
    | `offline_access` | stay signed in between runs |
 5. Store the client id and sign in:
@@ -90,6 +91,22 @@ Planning also does a live yotoicons tag lookup for any track the local catalog
 answers badly, and folds the results into the catalog. Pass `--no-live` to keep
 `plan` entirely offline.
 
+## Non-English playlists
+
+Both catalogs are tagged in English. `plan` marks any title that is not in the
+Latin alphabet as `"needs": "q"` and skips searching it, rather than returning
+nonsense. Supply translated queries and re-plan:
+
+```bash
+uv run yoto-iconer titles <cardId> --needs-query -o titles.json
+# the LLM writes queries.json: {"<slot>": "<english search terms>"}
+uv run yoto-iconer plan <cardId> --queries queries.json -o plan.json
+```
+
+Query terms should describe what the song is *about* in concrete, picturable
+nouns. `--queries` also overrides English titles, which is useful when the
+title is a metaphor.
+
 ## Commands
 
 | Command | What it does |
@@ -101,7 +118,8 @@ answers badly, and folds the results into the catalog. Pass `--no-live` to keep
 | `catalog sync [--official\|--community\|--user] [--pages N]` | build the local catalog |
 | `catalog stats` | what is in the catalog |
 | `search QUERY [-n N] [--source S] [--live]` | rank icons for one query |
-| `plan CARD [-n N] [-o FILE] [--only-missing] [--no-live] [--text]` | the LLM's input |
+| `titles CARD [--needs-query] [-o FILE]` | slot → title, for a translation pass |
+| `plan CARD [-n N] [-o FILE] [--only-missing] [--no-live] [--text] [--queries F]` | the LLM's input |
 | `show CARD` | current track → icon mapping |
 | `apply [CARD] -d FILE [-p PLAN] [--dry-run]` | write icons back |
 

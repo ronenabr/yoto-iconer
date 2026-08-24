@@ -21,7 +21,8 @@ Creating your Yoto API client (one time, ~2 minutes)
 
   4. Enable these scopes:
 
-         user:content:manage    (read + write your MYO playlists)
+         user:content:manage    (write your MYO playlists)
+         user:content:view      (read them - manage does not imply it)
          user:icons:manage      (upload community icons to your library)
          offline_access         (stay signed in between runs)
 
@@ -169,10 +170,15 @@ def cmd_search(args) -> int:
 def cmd_plan(args) -> int:
     conn = _conn()
     card = api.get_card(_token(), args.card_id)
+    queries = {}
+    if args.queries:
+        loaded = json.loads(open(args.queries).read())
+        queries = loaded.get("titles") or loaded.get("queries") or loaded
     built = plan_mod.build(
         conn,
         card,
         limit=args.limit,
+        queries=queries,
         sources=tuple(args.source) if args.source else None,
         only_missing=args.only_missing,
         live=not args.no_live,
@@ -187,6 +193,37 @@ def cmd_plan(args) -> int:
             print(plan_mod.render_text(built))
         return 0
     print(plan_mod.render_text(built) if args.text else payload)
+    return 0
+
+
+def cmd_titles(args) -> int:
+    """Slot -> title, the cheapest possible input for a translation pass."""
+    card = api.get_card(_token(), args.card_id)
+    titles = {
+        slot: title
+        for slot, title, _icon, _both in plan_mod.iter_slots(
+            card, only_missing=args.only_missing
+        )
+        if not (args.needs_query and search.is_latin(title))
+    }
+    payload = {
+        "cardId": card.get("cardId") or args.card_id,
+        "cardTitle": card.get("title"),
+        "howto": (
+            "These titles are not searchable against the English-tagged icon "
+            "catalogs. Write {\"<slot>\": \"<english search terms>\"} describing what "
+            "each song is ABOUT (concrete, picturable nouns work best), save it, and "
+            "run `yoto-iconer plan <cardId> --queries <file>`."
+        ),
+        "titles": titles,
+    }
+    blob = json.dumps(payload, indent=1, ensure_ascii=False)
+    if args.output:
+        with open(args.output, "w") as fh:
+            fh.write(blob + "\n")
+        print(f"Wrote {args.output}  ({len(titles)} titles)")
+        return 0
+    print(blob)
     return 0
 
 
@@ -280,7 +317,16 @@ def build_parser() -> argparse.ArgumentParser:
     s.add_argument("--only-missing", action="store_true", help="skip tracks that already have icons")
     s.add_argument("--no-live", action="store_true", help="never hit yotoicons.com while planning")
     s.add_argument("--text", action="store_true", help="human-readable rendering")
+    s.add_argument("--queries", help="JSON of {slot: english search terms} for non-English titles")
     s.set_defaults(func=cmd_plan)
+
+    s = sub.add_parser("titles", help="slot -> title, for a translation pass")
+    s.add_argument("card_id")
+    s.add_argument("-o", "--output")
+    s.add_argument("--needs-query", action="store_true",
+                   help="only titles that are not in the Latin alphabet")
+    s.add_argument("--only-missing", action="store_true", help="skip slots that already have icons")
+    s.set_defaults(func=cmd_titles)
 
     s = sub.add_parser("show", help="show the current track -> icon mapping")
     s.add_argument("card_id")

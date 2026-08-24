@@ -60,16 +60,25 @@ def build(
     sources: tuple[str, ...] | None = None,
     only_missing: bool = False,
     live: bool = True,
+    queries: dict[str, str] | None = None,
 ) -> dict:
     pool: dict[str, str] = {}   # icon key -> short id
     icons: dict[str, str] = {}  # short id -> "src|title|tags"
     rows = []
 
+    queries = queries or {}
     for slot, title, current, both in iter_slots(card, only_missing=only_missing):
-        query = search.query_for(title)
+        supplied = (queries.get(slot) or "").strip()
+        # A non-Latin title cannot be searched against English-tagged icons;
+        # it needs a translated query before candidates mean anything.
+        if not supplied and not search.is_latin(title):
+            rows.append({"t": slot, "title": title, "q": "", "c": [], "needs": "q"})
+            continue
+
+        query = supplied or search.query_for(title)
         candidates = search.search(conn, query, limit=limit, sources=sources)
 
-        tokens = search.tokenize(title)
+        tokens = search.tokenize(query)
         # A high bm25 score on a near-miss is not a match: insist on a real
         # word overlap before trusting the local catalog.
         needs_help = (
@@ -78,7 +87,7 @@ def build(
             or not search.title_hit(candidates[0], tokens)
         )
         if live and needs_help and (not sources or "community" in sources):
-            for token in search.live_terms(title):
+            for token in search.live_terms(query):
                 try:
                     catalog.absorb_community_search(conn, token)
                 except yotoicons.ScrapeError:
@@ -117,7 +126,9 @@ def build(
             "from icons, or 'yotoicons:<numeric id>', or 'yoto:#<mediaId>'>, \"why\": "
             "\"...\"}]}. Omit a track to leave it untouched. Icon values read "
             "'source|name|tags' where off=official Yoto icon, com=yotoicons.com "
-            "community icon, usr=your own uploaded icon."
+            "community icon, usr=your own uploaded icon. A track marked needs=q has a "
+            "non-English title: supply English search terms for it via "
+            "`plan --queries` and re-plan."
         ),
         "keys": {pool[k]: k for k in pool},
         "icons": icons,
@@ -132,6 +143,10 @@ def render_text(plan: dict, per_track: int = 5) -> str:
     for row in plan["tracks"]:
         current = f"  (now: {row['now']})" if row.get("now") else ""
         lines.append(f"{row['t']:>7}  {row['title']}{current}")
+        if row.get("needs") == "q":
+            lines.append("          needs an English query - see `yoto-iconer titles`")
+            lines.append("")
+            continue
         if not row["c"]:
             lines.append("          no candidates - try `yoto-iconer search`")
         for sid in row["c"][:per_track]:

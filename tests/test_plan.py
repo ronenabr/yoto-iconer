@@ -65,3 +65,62 @@ def test_render_text_lists_every_slot(seeded, card):
     text = plan.render_text(built)
     for row in built["tracks"]:
         assert row["t"] in text
+
+
+def _hebrew_card():
+    return {
+        "cardId": "HEB",
+        "title": "Songs",
+        "content": {"chapters": [
+            {"key": "aaa", "title": "אדון שוקו.mp3", "display": {"icon16x16": None},
+             "tracks": [{"key": "01", "title": "אדון שוקו.mp3", "trackUrl": "yoto:#x",
+                         "duration": 60, "format": "mp3", "type": "audio",
+                         "overlayLabel": "1"}]},
+            {"key": "bbb", "title": "clock.mp3", "display": {"icon16x16": None},
+             "tracks": [{"key": "01", "title": "clock.mp3", "trackUrl": "yoto:#y",
+                         "duration": 60, "format": "mp3", "type": "audio",
+                         "overlayLabel": "2"}]},
+        ]},
+    }
+
+
+def test_non_latin_title_is_flagged_instead_of_searched(seeded):
+    built = plan.build(seeded, _hebrew_card(), limit=4, live=False)
+    rows = {r["t"]: r for r in built["tracks"]}
+    assert rows["aaa"]["needs"] == "q"
+    assert rows["aaa"]["c"] == []
+
+
+def test_latin_title_is_searched_normally(seeded):
+    built = plan.build(seeded, _hebrew_card(), limit=4, live=False)
+    rows = {r["t"]: r for r in built["tracks"]}
+    assert "needs" not in rows["bbb"]
+
+
+def test_supplied_query_unlocks_a_non_latin_title(seeded):
+    built = plan.build(
+        seeded, _hebrew_card(), limit=4, live=False, queries={"aaa": "school bus"}
+    )
+    rows = {r["t"]: r for r in built["tracks"]}
+    assert "needs" not in rows["aaa"]
+    assert rows["aaa"]["q"] == "school bus"
+    assert built["icons"][rows["aaa"]["c"][0]].endswith("School bus|bus school vehicle")
+
+
+def test_supplied_query_overrides_a_latin_title_too(seeded):
+    built = plan.build(
+        seeded, _hebrew_card(), limit=4, live=False, queries={"bbb": "dinosaur"}
+    )
+    rows = {r["t"]: r for r in built["tracks"]}
+    assert "Dinosaur" in built["icons"][rows["bbb"]["c"][0]]
+
+
+def test_blank_supplied_query_still_flags_the_slot(seeded):
+    built = plan.build(seeded, _hebrew_card(), limit=4, live=False, queries={"aaa": "  "})
+    rows = {r["t"]: r for r in built["tracks"]}
+    assert rows["aaa"]["needs"] == "q"
+
+
+def test_render_text_calls_out_slots_needing_a_query(seeded):
+    built = plan.build(seeded, _hebrew_card(), limit=4, live=False)
+    assert "needs an English query" in plan.render_text(built)

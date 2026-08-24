@@ -16,7 +16,9 @@ CALLBACK_PORT = 8787
 CALLBACK_PATH = "/callback"
 REDIRECT_URI = f"http://127.0.0.1:{CALLBACK_PORT}{CALLBACK_PATH}"
 
-SCOPES = "user:content:manage user:icons:manage offline_access"
+# The docs say user:content:manage implies user:content:view, but the API
+# checks the literal scope string on the token, so ask for both explicitly.
+SCOPES = "user:content:manage user:content:view user:icons:manage offline_access"
 
 
 def home() -> Path:

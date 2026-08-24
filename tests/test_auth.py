@@ -74,3 +74,8 @@ def test_access_token_without_client_id_is_an_error():
     auth.save_tokens({"access_token": "a", "refresh_token": "r", "expires_at": 0})
     with pytest.raises(auth.AuthError, match="client id"):
         auth.access_token()
+
+
+def test_scopes_request_content_view_explicitly():
+    # The API rejects reads with only user:content:manage, despite the docs.
+    assert "user:content:view" in config.SCOPES

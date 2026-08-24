@@ -26,11 +26,13 @@ _NOISE_PARENS = re.compile(
     re.I,
 )
 _LEADING_INDEX = re.compile(r"^\s*\d{1,3}\s*[-._)]\s+")
+_EXTENSION = re.compile(r"\.(mp3|m4a|m4b|wav|flac|ogg|opus|aac|wma)\b", re.I)
 _NONWORD = re.compile(r"[^a-z0-9' ]+")
 
 
 def normalize_title(title: str) -> str:
-    text = _NOISE_PARENS.sub(" ", title or "")
+    text = _EXTENSION.sub(" ", title or "")
+    text = _NOISE_PARENS.sub(" ", text)
     text = _LEADING_INDEX.sub("", text)
     text = text.replace("&", " and ")
     return text.strip()
@@ -107,6 +109,19 @@ def has_lexical_hit(candidates: list[dict], tokens: list[str]) -> bool:
         if want & (stems(_words(cand.get("title"))) | stems((cand.get("tags") or "").split())):
             return True
     return False
+
+
+def is_latin(title: str, threshold: float = 0.8) -> bool:
+    """Whether a title is written mostly in the Latin alphabet.
+
+    Both icon catalogs are tagged in English, so a Hebrew, Cyrillic or CJK
+    title cannot be searched directly - it needs a translated query.
+    """
+    letters = [c for c in (title or "") if c.isalpha()]
+    if not letters:
+        return False
+    ascii_letters = sum(1 for c in letters if c.isascii())
+    return ascii_letters / len(letters) >= threshold
 
 
 def query_for(title: str) -> str:

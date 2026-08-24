@@ -27,6 +27,22 @@ query, `.c` the candidate short ids, `.now` the current icon if any.
 Prefer `off` candidates when they are as good as a `com` one — they need no
 upload. Always `--dry-run` before the real apply.
 
+## Non-English playlists
+
+Both icon catalogs are tagged in English, so a Hebrew/Cyrillic/CJK title cannot
+be searched directly. `plan` flags those slots `"needs": "q"` with no
+candidates. Translate before planning:
+
+```bash
+uv run yoto-iconer titles <cardId> --needs-query -o titles.json
+# write queries.json: {"<slot>": "<english search terms>", ...}
+uv run yoto-iconer plan <cardId> --queries queries.json -o plan.json
+```
+
+Write terms describing what the song is *about* — concrete, picturable nouns
+("chocolate milk", "traffic light", "grandmother baking"). Do not transliterate,
+and do not pass through artist names: no icon is tagged "Batel Tzabari".
+
 ## Conventions
 
 - Standard library only in `yoto_iconer/`. `uv` manages the environment; new
